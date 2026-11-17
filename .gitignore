@@ -7,3 +7,10 @@ src/repos/common/database.test.json
 
 # Keep production secrets out of git; share values through your deploy tooling
 config/.env.production
+
+# Local SQLite databases (dev/test data, never committed)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

@@ -1,5 +1,42 @@
 import crypto from 'node:crypto';
 
+import { Env } from '#src/common/constants/env.constants.ts';
+
+const FIELD_KEY = Buffer.from(Env.FIELD_ENCRYPTION_KEY, 'base64');
+
+/**
+ * Encrypt a sensitive column value with AES-256-GCM.
+ * Output: `v1.<iv>.<tag>.<ciphertext>` (base64url parts). A fresh random IV is
+ * used every time, so equal inputs produce different ciphertexts.
+ */
+export function encryptField(plain: string): string {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', FIELD_KEY, iv);
+  const ct = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return ['v1', iv, tag, ct]
+    .map((p) => (typeof p === 'string' ? p : p.toString('base64url')))
+    .join('.');
+}
+
+/** Reverse of encryptField. Throws if the value was tampered with. */
+export function decryptField(stored: string): string {
+  const [version, iv, tag, ct] = stored.split('.');
+  if (version !== 'v1' || !iv || !tag || !ct) {
+    throw new Error('Unsupported encrypted field format');
+  }
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    FIELD_KEY,
+    Buffer.from(iv, 'base64url'),
+  );
+  decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(ct, 'base64url')),
+    decipher.final(),
+  ]).toString('utf8');
+}
+
 // ========================================================================= //
 //                                 FUNCTIONS                                 //
 // ========================================================================= //

@@ -37,6 +37,13 @@ const EnvSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 
+  FIELD_ENCRYPTION_KEY: z
+    .string()
+    .refine(
+      (v) => Buffer.from(v, 'base64').length === 32,
+      'FIELD_ENCRYPTION_KEY must be 32 bytes, base64-encoded',
+    ),
+
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ISSUER: z.string().default('jwallet-api'),
   JWT_AUDIENCE: z.string().default('jwallet-app'),

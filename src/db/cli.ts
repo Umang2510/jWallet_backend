@@ -2,7 +2,7 @@ import logger from 'jet-logger';
 
 import db from './client.ts';
 import { runMigrations } from './migrate.ts';
-import { seedDemoData } from './seed.ts';
+import { seedDemoData, seedSampleTransactions } from './seed.ts';
 
 // Usage: node --env-file=<env> src/db/cli.ts <migrate|seed|setup>
 
@@ -17,11 +17,13 @@ try {
     }
     case 'seed':
       await seedDemoData();
+      await seedSampleTransactions();
       logger.info('Seed complete');
       break;
     case 'setup':
       await runMigrations();
       await seedDemoData();
+      await seedSampleTransactions();
       logger.info('Database ready');
       break;
     default:

@@ -86,6 +86,27 @@ async function hasTransactionPin(userId: string): Promise<boolean> {
   return res.rows.length > 0;
 }
 
+/** Public profile fields for the given internal user id. */
+async function findProfile(id: string): Promise<{
+  publicId: string;
+  name: string;
+  email: string;
+  createdAt: string;
+} | null> {
+  const res = await db.execute({
+    sql: 'SELECT public_id, name, email, created_at FROM users WHERE id = ?',
+    args: [id],
+  });
+  const r = res.rows[0];
+  if (!r) return null;
+  return {
+    publicId: asText(r.public_id),
+    name: asText(r.name),
+    email: asText(r.email),
+    createdAt: asText(r.created_at),
+  };
+}
+
 // ========================================================================= //
 //                                  EXPORT                                   //
 // ========================================================================= //
@@ -93,6 +114,7 @@ async function hasTransactionPin(userId: string): Promise<boolean> {
 export default {
   findByEmail,
   findById,
+  findProfile,
   recordFailedLogin,
   resetLoginFailuresStmt,
   hasTransactionPin,
