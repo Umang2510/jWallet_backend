@@ -46,6 +46,7 @@ const EnvSchema = z.object({
   LOGIN_LOCK_MINUTES: z.coerce.number().int().min(1).default(15),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
   LOGIN_RATE_LIMIT_WINDOW_SEC: z.coerce.number().int().min(1).default(900),
+  REFRESH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
 });
 
 // ===================== Validate Environment Variables ==================== //

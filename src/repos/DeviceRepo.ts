@@ -1,11 +1,32 @@
 import type { InStatement } from '@libsql/client';
 import { v7 as uuidv7 } from 'uuid';
 
-import db from '#src/db/client.ts';
+import db, { asTextOrNull } from '#src/db/client.ts';
 
 // ========================================================================= //
 //                                 FUNCTIONS                                 //
 // ========================================================================= //
+
+/** The device row for (user, device), or null if unknown. */
+async function find(
+  userId: string,
+  deviceId: string,
+): Promise<{
+  devicePublicKey: string | null;
+  revokedAt: string | null;
+} | null> {
+  const res = await db.execute({
+    sql: `SELECT device_public_key, revoked_at FROM devices
+          WHERE user_id = ? AND device_id = ?`,
+    args: [userId, deviceId],
+  });
+  const r = res.rows[0];
+  if (!r) return null;
+  return {
+    devicePublicKey: asTextOrNull(r.device_public_key),
+    revokedAt: asTextOrNull(r.revoked_at),
+  };
+}
 
 async function isBiometricEnrolled(
   userId: string,
@@ -46,6 +67,7 @@ function upsertOnLoginStmt(
 // ========================================================================= //
 
 export default {
+  find,
   isBiometricEnrolled,
   upsertOnLoginStmt,
 } as const;

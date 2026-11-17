@@ -1,2 +1,2 @@
-export { default as default } from './module.ts';
-export type { LoginInput } from './module.ts';
+export { default as default, refreshProofMessage } from './module.ts';
+export type { LoginInput, LogoutInput, RefreshInput } from './module.ts';

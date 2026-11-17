@@ -42,6 +42,18 @@ async function findByEmail(email: string): Promise<UserRow | null> {
   };
 }
 
+async function findById(
+  id: string,
+): Promise<{ id: string; status: UserRow['status'] } | null> {
+  const res = await db.execute({
+    sql: 'SELECT id, status FROM users WHERE id = ?',
+    args: [id],
+  });
+  const r = res.rows[0];
+  if (!r) return null;
+  return { id: asText(r.id), status: asText(r.status) as UserRow['status'] };
+}
+
 /** Record a failed login; `lockedUntil` is set when the threshold is hit. */
 async function recordFailedLogin(
   userId: string,
@@ -80,6 +92,7 @@ async function hasTransactionPin(userId: string): Promise<boolean> {
 
 export default {
   findByEmail,
+  findById,
   recordFailedLogin,
   resetLoginFailuresStmt,
   hasTransactionPin,

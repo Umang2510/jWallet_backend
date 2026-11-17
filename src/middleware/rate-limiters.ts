@@ -25,3 +25,19 @@ export const loginRateLimiter = rateLimit({
     );
   },
 });
+
+/** Per-IP limit on token refreshes (stops refresh-token guessing/flooding). */
+export const refreshRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Env.REFRESH_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_req, _res, next) => {
+    next(
+      new TooManyRequestsError(
+        'Too many requests. Please try again later.',
+        'RATE_LIMITED',
+      ),
+    );
+  },
+});

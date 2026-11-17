@@ -15,6 +15,33 @@ export function randomToken(prefix = ''): string {
 }
 
 /**
+ * Verify an ECDSA P-256 / SHA-256 signature (DER-encoded, base64) — the format
+ * Android Keystore `SHA256withECDSA` produces — against a base64 DER SPKI key.
+ * Returns false (never throws) for malformed input.
+ */
+export function verifyP256Signature(
+  publicKeyBase64: string,
+  message: string,
+  signatureBase64: string,
+): boolean {
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.from(publicKeyBase64, 'base64'),
+      format: 'der',
+      type: 'spki',
+    });
+    return crypto.verify(
+      'sha256',
+      Buffer.from(message, 'utf8'),
+      { key, dsaEncoding: 'der' },
+      Buffer.from(signatureBase64, 'base64'),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * True if `value` is a base64-encoded DER SPKI public key on curve P-256
  * (the format Android Keystore / iOS Secure Enclave keys export to).
  */

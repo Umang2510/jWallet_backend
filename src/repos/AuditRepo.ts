@@ -14,6 +14,11 @@ export const AuditActions = {
   LOGIN_LOCKED: 'LOGIN_LOCKED',
   LOGIN_BLOCKED: 'LOGIN_BLOCKED',
   LOGIN_INACTIVE: 'LOGIN_INACTIVE',
+  TOKEN_REFRESH: 'TOKEN_REFRESH',
+  TOKEN_REFRESH_FAIL: 'TOKEN_REFRESH_FAIL',
+  TOKEN_REUSE_DETECTED: 'TOKEN_REUSE_DETECTED',
+  LOGOUT: 'LOGOUT',
+  LOGOUT_ALL: 'LOGOUT_ALL',
 } as const;
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
 

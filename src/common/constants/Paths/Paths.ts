@@ -13,6 +13,8 @@ const Paths = {
   Auth: {
     PATH: AUTH_BASE,
     Login: ep(AUTH, '/login', 'POST'),
+    Refresh: ep(AUTH, '/refresh', 'POST'),
+    Logout: ep(AUTH, '/logout', 'POST'),
   },
 } as const;
 

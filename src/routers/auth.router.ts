@@ -1,12 +1,32 @@
-import { Router } from 'express';
+import { type Request, type Response, Router } from 'express';
 
 import HttpStatusCodes from '#src/common/constants/HttpStatusCodes.ts';
 import Paths from '#src/common/constants/Paths/index.ts';
 import { sendSuccess } from '#src/common/utils/response.utils.ts';
-import Auth, { type LoginInput } from '#src/entities/Auth/index.ts';
-import { loginRateLimiter } from '#src/middleware/rate-limiters.ts';
+import Auth, {
+  type LoginInput,
+  type LogoutInput,
+  type RefreshInput,
+} from '#src/entities/Auth/index.ts';
+import { getAuth, requireAuth } from '#src/middleware/auth.ts';
+import {
+  loginRateLimiter,
+  refreshRateLimiter,
+} from '#src/middleware/rate-limiters.ts';
 import { validateBody } from '#src/middleware/validate.ts';
-import AuthService from '#src/services/AuthService.ts';
+import AuthService, { type RequestContext } from '#src/services/AuthService.ts';
+
+// ========================================================================= //
+//                                 FUNCTIONS                                 //
+// ========================================================================= //
+
+function requestContext(req: Request, res: Response): RequestContext {
+  return {
+    ip: req.ip ?? null,
+    userAgent: req.get('user-agent') ?? null,
+    requestId: (res.locals.requestId as string | undefined) ?? null,
+  };
+}
 
 // ========================================================================= //
 //                                   EXEC                                    //
@@ -14,18 +34,53 @@ import AuthService from '#src/services/AuthService.ts';
 
 const router = Router();
 
-// Public route: no access token required.
+// Public: email + password -> access token + refresh token.
 router.post(
   Paths.Auth.Login.PATH,
   loginRateLimiter,
   validateBody(Auth.Schemas.Login),
   async (req, res) => {
-    const result = await AuthService.login(req.body as LoginInput, {
-      ip: req.ip ?? null,
-      userAgent: req.get('user-agent') ?? null,
-      requestId: (res.locals.requestId as string | undefined) ?? null,
-    });
+    const result = await AuthService.login(
+      req.body as LoginInput,
+      requestContext(req, res),
+    );
     sendSuccess(res, HttpStatusCodes.OK, 'Login successful', result);
+  },
+);
+
+// Public (authenticated by the refresh token itself): rotate token pair.
+router.post(
+  Paths.Auth.Refresh.PATH,
+  refreshRateLimiter,
+  validateBody(Auth.Schemas.Refresh),
+  async (req, res) => {
+    const result = await AuthService.refresh(
+      req.body as RefreshInput,
+      requestContext(req, res),
+    );
+    sendSuccess(res, HttpStatusCodes.OK, 'Token refreshed', result);
+  },
+);
+
+// Protected: end this session (or all sessions with { allDevices: true }).
+router.post(
+  Paths.Auth.Logout.PATH,
+  requireAuth,
+  validateBody(Auth.Schemas.Logout),
+  async (req, res) => {
+    const result = await AuthService.logout(
+      getAuth(res),
+      req.body as LogoutInput,
+      requestContext(req, res),
+    );
+    sendSuccess(
+      res,
+      HttpStatusCodes.OK,
+      result.allDevices
+        ? 'Logged out from all devices'
+        : 'Logged out successfully',
+      result,
+    );
   },
 );
 
