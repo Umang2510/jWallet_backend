@@ -44,6 +44,18 @@ const EnvSchema = z.object({
       'FIELD_ENCRYPTION_KEY must be 32 bytes, base64-encoded',
     ),
 
+  SERVER_ENC_KEY_ID: z
+    .string()
+    .regex(/^[A-Za-z0-9._-]{1,32}$/, 'SERVER_ENC_KEY_ID is invalid'),
+  SERVER_ENC_PRIVATE_KEY: z
+    .string()
+    .refine(
+      (v) => Buffer.from(v, 'base64').length === 32,
+      'SERVER_ENC_PRIVATE_KEY must be a base64 32-byte P-256 private key',
+    ),
+  // Allowed clock difference for encrypted requests (replay window).
+  ENC_MAX_SKEW_SEC: z.coerce.number().int().min(10).default(120),
+
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ISSUER: z.string().default('jwallet-api'),
   JWT_AUDIENCE: z.string().default('jwallet-app'),

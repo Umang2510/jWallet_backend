@@ -12,6 +12,7 @@ import { RouteError } from '#src/common/classes/route-errors.ts';
 import HttpStatusCodes from '#src/common/constants/HttpStatusCodes.ts';
 import Paths from '#src/common/constants/Paths/index.ts';
 import { sendError, sendSuccess } from '#src/common/utils/response.utils.ts';
+import { e2eEncryption } from '#src/middleware/e2e-encryption.ts';
 import BaseRouter from '#src/routers/api.router.ts';
 
 import { Env, NodeEnvs } from './common/constants/env.constants.ts';
@@ -53,6 +54,9 @@ app.use(Paths.PATH, (_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
 });
+
+// Optional end-to-end payload encryption (the mobile app always uses it).
+app.use(Paths.PATH, e2eEncryption);
 
 // ================================= Routes ================================ //
 

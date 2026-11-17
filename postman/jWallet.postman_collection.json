@@ -1,0 +1,1447 @@
+{
+  "info": {
+    "name": "jWallet Lite API",
+    "_postman_id": "6f1f3a4e-2c1b-4c8e-9b7a-1a2b3c4d5e6f",
+    "description": "Mock REST API for the jWallet Lite Flutter app.\n\nEvery response (success and error) uses the envelope:\n`{ \"meta\": { \"statusCode\", \"message\" }, \"body\": { ... } }`. Errors put `errorCode` (and `details` for validation) in `body`.\n\n**Quick start:** pick an environment (or edit the `baseUrl` collection variable), run **Auth → Login**, then any request. Tokens are saved automatically.\n\n**Transfers are two steps:** *1. Create transfer challenge* (saves `challengeId` and a fresh `idempotencyKey`), then *2. Transfer with PIN*. The user needs a PIN first: run **Security → Set PIN** within 5 minutes of logging in (once per user).\n\n**Encryption:** the mobile app encrypts bodies end-to-end (ECDH P-256 + HKDF + AES-256-GCM, header `X-Encrypted: 1`). The server also accepts plain JSON, which is what this collection sends. Run `npm run demo:encrypted` to see encrypted calls.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "demo@jstack.co",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Demo@123",
+      "type": "string"
+    },
+    {
+      "key": "pin",
+      "value": "2580",
+      "type": "string"
+    },
+    {
+      "key": "newPin",
+      "value": "3691",
+      "type": "string"
+    },
+    {
+      "key": "beneficiaryName",
+      "value": "Rahul Sharma",
+      "type": "string"
+    },
+    {
+      "key": "mobileNumber",
+      "value": "9876543210",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challengeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transactionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('meta/body envelope', () => {",
+              "  const r = pm.response.json();",
+              "  pm.expect(r.meta.statusCode).to.eql(200);",
+              "  pm.expect(r).to.have.property('body');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "const b = pm.response.json().body;",
+                  "if (b && b.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', b.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', b.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns a 15-minute access token and a 7-day refresh token. Optional `deviceId` (UUID) and `devicePublicKey` (base64 P-256 SPKI) bind the session to a phone; the app always sends them."
+          }
+        },
+        {
+          "name": "Login - wrong password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(401);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "pm.test('INVALID_CREDENTIALS', () => pm.expect(pm.response.json().body.errorCode).to.eql('INVALID_CREDENTIALS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"Wrong@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "5 wrong attempts lock the account for 15 minutes (429)."
+          }
+        },
+        {
+          "name": "Login - validation error (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(400);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "const b = pm.response.json().body;",
+                  "if (b && b.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', b.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', b.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates both tokens. Re-using an old refresh token logs the whole session out (REFRESH_TOKEN_REUSED)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile & Wallet",
+      "item": [
+        {
+          "name": "Get profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get wallet balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "pm.test('balance is a number', () => pm.expect(pm.response.json().body.availableBalance).to.be.a('number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get wallet balance - no token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(401);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wallet/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wallet",
+                "balance"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Transaction history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "const items = pm.response.json().body.items;",
+                  "if (items.length) pm.collectionVariables.set('transactionId', items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": "CREDIT",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "SUCCESS",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "rahul",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2026-11-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2026-11-30",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Newest first. Optional filters (enable in Params): `type` (CREDIT/DEBIT), `status`, `q` (name or reference), `from`/`to` (YYYY-MM-DD, IST, inclusive), `page`, `limit` (max 50). Saves the first id for *Transaction details*."
+          }
+        },
+        {
+          "name": "Latest five (dashboard)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credits only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?type=CREDIT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "CREDIT"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?q=rahul",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "rahul"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid filter (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(400);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?type=TRANSFER&limit=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "TRANSFER"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transaction details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transaction details - not found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(404);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/TXN10001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "TXN10001"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security",
+      "item": [
+        {
+          "name": "Encryption public key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/security/encryption-key",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "security",
+                "encryption-key"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(201);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"{{pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/security/pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "security",
+                "pin"
+              ]
+            },
+            "description": "Mandatory once per user, within 5 minutes of a password login (else 403 REAUTH_REQUIRED). 4 or 6 digits; weak PINs (1234, 0000, 1212...) are rejected. 409 if a PIN already exists."
+          }
+        },
+        {
+          "name": "Change PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const oldPin = pm.collectionVariables.get('pin');",
+                  "  pm.collectionVariables.set('pin', pm.collectionVariables.get('newPin'));",
+                  "  pm.collectionVariables.set('newPin', oldPin);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPin\": \"{{pin}}\",\n  \"newPin\": \"{{newPin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/security/pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "security",
+                "pin"
+              ]
+            },
+            "description": "3 wrong PINs lock PIN use (and transfers) for 24 hours (423 PIN_LOCKED). On success the pin/newPin variables are swapped automatically."
+          }
+        },
+        {
+          "name": "Enroll biometric key",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publicKey\": \"<base64 DER SPKI P-256 public key from Android Keystore>\",\n  \"pin\": \"{{pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/biometric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "biometric"
+              ]
+            },
+            "description": "Used by the app: needs a device-bound session (login with deviceId) and a real Keystore key. From Postman this returns 400 (DEVICE_REQUIRED / invalid key)."
+          }
+        },
+        {
+          "name": "Disable biometric",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/biometric",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "biometric"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Money transfer",
+      "description": "Two steps: challenge, then transfer with approval. Requires a PIN (Security → Set PIN).",
+      "item": [
+        {
+          "name": "1. Create transfer challenge",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(201);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "pm.collectionVariables.set('challengeId', pm.response.json().body.challengeId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"{{mobileNumber}}\",\n  \"amount\": 1500,\n  \"remarks\": \"Payment for services\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer/challenge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer",
+                "challenge"
+              ]
+            },
+            "description": "Validates the transfer (name, 10-digit mobile, amount > 0 with max 2 decimals, limits, balance) and returns a one-time challenge valid for 2 minutes. Also generates a new Idempotency-Key for step 2."
+          }
+        },
+        {
+          "name": "2. Transfer with PIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "pm.collectionVariables.set('transactionId', pm.response.json().body.transactionId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"{{mobileNumber}}\",\n  \"amount\": 1500,\n  \"remarks\": \"Payment for services\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"approval\": {\n    \"method\": \"PIN\",\n    \"pin\": \"{{pin}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer"
+              ]
+            },
+            "description": "Body must match the challenge exactly. The app uses `approval: { \"method\": \"BIOMETRIC\", \"signature\": \"<base64>\" }` signed by the Keystore key."
+          }
+        },
+        {
+          "name": "3. Retry same transfer (idempotent replay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "pm.test('replayed, no second debit', () => pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"{{mobileNumber}}\",\n  \"amount\": 1500,\n  \"remarks\": \"Payment for services\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"approval\": {\n    \"method\": \"PIN\",\n    \"pin\": \"{{pin}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer"
+              ]
+            },
+            "description": "Same Idempotency-Key + same body returns the original result without deducting again."
+          }
+        },
+        {
+          "name": "Insufficient balance (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(409);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"{{mobileNumber}}\",\n  \"amount\": 99999,\n  \"remarks\": \"Payment for services\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer/challenge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer",
+                "challenge"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid mobile / zero amount (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(400);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"12345\",\n  \"amount\": 0,\n  \"remarks\": \"Payment for services\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer/challenge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer",
+                "challenge"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Missing Idempotency-Key (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(400);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"beneficiaryName\": \"{{beneficiaryName}}\",\n  \"mobileNumber\": \"{{mobileNumber}}\",\n  \"amount\": 1500,\n  \"remarks\": \"Payment for services\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"approval\": {\n    \"method\": \"PIN\",\n    \"pin\": \"{{pin}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "transfer"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout",
+      "description": "Run last: ends the session(s).",
+      "item": [
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Ends this session immediately. Send `{ \"allDevices\": true }` to end every session."
+          }
+        },
+        {
+          "name": "Login again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});",
+                  "const b = pm.response.json().body;",
+                  "if (b && b.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', b.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', b.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns a 15-minute access token and a 7-day refresh token. Optional `deviceId` (UUID) and `devicePublicKey` (base64 P-256 SPKI) bind the session to a phone; the app always sends them."
+          }
+        },
+        {
+          "name": "Logout - all devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta/body envelope', () => {",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.meta.statusCode).to.eql(200);",
+                  "  pm.expect(r).to.have.property('body');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"allDevices\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

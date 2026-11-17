@@ -9,6 +9,7 @@ import Security, {
   type SetPinInput,
 } from '#src/entities/Security/index.ts';
 import { getAuth, requireAuth, requireScope } from '#src/middleware/auth.ts';
+import { SERVER_ENC_PUBLIC_KEY } from '#src/middleware/e2e-encryption.ts';
 import { validateBody } from '#src/middleware/validate.ts';
 import PinService from '#src/services/PinService.ts';
 
@@ -18,6 +19,17 @@ import PinService from '#src/services/PinService.ts';
 
 const router = Router();
 
+// Public: the server's encryption public key (the app also bundles it).
+router.get(Paths.Security.EncryptionKey.PATH, (_req, res) => {
+  sendSuccess(
+    res,
+    HttpStatusCodes.OK,
+    'Encryption key fetched successfully',
+    SERVER_ENC_PUBLIC_KEY,
+  );
+});
+
+// Everything below requires a session with security:manage.
 router.use(requireAuth, requireScope('security:manage'));
 
 // Set the first transaction PIN (mandatory after first login).

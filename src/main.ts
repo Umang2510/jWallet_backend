@@ -1,6 +1,7 @@
 import logger from 'jet-logger';
 
 import { Env } from './common/constants/env.constants.ts';
+import { startMaintenance } from './db/maintenance.ts';
 import { runMigrations } from './db/migrate.ts';
 import { seedIfEmpty } from './db/seed.ts';
 import server from './server.ts';
@@ -20,6 +21,9 @@ await runMigrations();
 if (Env.AUTO_SEED) {
   await seedIfEmpty();
 }
+
+// Periodically delete expired nonces, challenges and idempotency records.
+startMaintenance();
 
 // Start the server
 server.listen(Env.PORT, (err) => {

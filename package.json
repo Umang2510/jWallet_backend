@@ -15,7 +15,8 @@
     "db:setup": "node --env-file=config/.env.development src/db/cli.ts setup",
     "db:setup:prod": "node --env-file-if-exists=config/.env.production src/db/cli.ts setup",
     "user:create": "node --env-file=config/.env.development src/db/create-user.ts",
-    "user:create:prod": "node --env-file-if-exists=config/.env.production src/db/create-user.ts"
+    "user:create:prod": "node --env-file-if-exists=config/.env.production src/db/create-user.ts",
+    "demo:encrypted": "node src/scripts/encrypted-demo.ts"
   },
   "imports": {
     "#src/*": "./src/*"

@@ -42,6 +42,7 @@ const Paths = {
   },
   Security: {
     PATH: SECURITY_BASE,
+    EncryptionKey: ep(SECURITY, '/encryption-key', 'GET'),
     SetPin: ep(SECURITY, '/pin', 'POST'),
     ChangePin: ep(SECURITY, '/pin', 'PUT'),
   },
