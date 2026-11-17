@@ -18,6 +18,12 @@ const WALLET = BASE + WALLET_BASE;
 const TXN_BASE = '/transactions';
 const TXN = BASE + TXN_BASE;
 
+const SECURITY_BASE = '/security';
+const SECURITY = BASE + SECURITY_BASE;
+
+const DEVICES_BASE = '/devices';
+const DEVICES = BASE + DEVICES_BASE;
+
 const Paths = {
   PATH: BASE,
   Auth: {
@@ -33,6 +39,15 @@ const Paths = {
   Wallet: {
     PATH: WALLET_BASE,
     Balance: ep(WALLET, '/balance', 'GET'),
+  },
+  Security: {
+    PATH: SECURITY_BASE,
+    SetPin: ep(SECURITY, '/pin', 'POST'),
+    ChangePin: ep(SECURITY, '/pin', 'PUT'),
+  },
+  Devices: {
+    PATH: DEVICES_BASE,
+    Biometric: ep(DEVICES, '/biometric', 'POST'),
   },
   Transactions: {
     PATH: TXN_BASE,

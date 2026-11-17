@@ -54,6 +54,12 @@ const EnvSchema = z.object({
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
   LOGIN_RATE_LIMIT_WINDOW_SEC: z.coerce.number().int().min(1).default(900),
   REFRESH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+
+  // UPI-style transaction PIN
+  PIN_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(3),
+  PIN_LOCK_HOURS: z.coerce.number().int().min(1).default(24),
+  // Setting a first PIN is only allowed this soon after a password login.
+  FRESH_AUTH_MINUTES: z.coerce.number().int().min(1).default(5),
 });
 
 // ===================== Validate Environment Variables ==================== //

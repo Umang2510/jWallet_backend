@@ -19,6 +19,13 @@ export const AuditActions = {
   TOKEN_REUSE_DETECTED: 'TOKEN_REUSE_DETECTED',
   LOGOUT: 'LOGOUT',
   LOGOUT_ALL: 'LOGOUT_ALL',
+  PIN_SET: 'PIN_SET',
+  PIN_CHANGED: 'PIN_CHANGED',
+  PIN_FAIL: 'PIN_FAIL',
+  PIN_LOCKED: 'PIN_LOCKED',
+  PIN_BLOCKED: 'PIN_BLOCKED',
+  BIOMETRIC_ENROLLED: 'BIOMETRIC_ENROLLED',
+  BIOMETRIC_REMOVED: 'BIOMETRIC_REMOVED',
 } as const;
 export type AuditAction = (typeof AuditActions)[keyof typeof AuditActions];
 

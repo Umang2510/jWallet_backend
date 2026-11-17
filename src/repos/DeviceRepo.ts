@@ -62,12 +62,56 @@ function upsertOnLoginStmt(
   };
 }
 
+/** Store (or replace) the biometric-bound public key for an active device. */
+async function setBiometricKey(
+  userId: string,
+  deviceId: string,
+  publicKey: string,
+  now: string,
+): Promise<boolean> {
+  const res = await db.execute({
+    sql: `UPDATE devices
+          SET biometric_public_key = ?, biometric_enrolled_at = ?, last_seen_at = ?
+          WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`,
+    args: [publicKey, now, now, userId, deviceId],
+  });
+  return res.rowsAffected > 0;
+}
+
+/** Remove the biometric key from a device (biometric approval turned off). */
+async function clearBiometricKey(
+  userId: string,
+  deviceId: string,
+): Promise<void> {
+  await db.execute({
+    sql: `UPDATE devices SET biometric_public_key = NULL, biometric_enrolled_at = NULL
+          WHERE user_id = ? AND device_id = ?`,
+    args: [userId, deviceId],
+  });
+}
+
+/** The biometric public key for an active device, or null. */
+async function getBiometricKey(
+  userId: string,
+  deviceId: string,
+): Promise<string | null> {
+  const res = await db.execute({
+    sql: `SELECT biometric_public_key FROM devices
+          WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`,
+    args: [userId, deviceId],
+  });
+  return asTextOrNull(res.rows[0]?.biometric_public_key);
+}
+
 // ========================================================================= //
 //                                  EXPORT                                   //
 // ========================================================================= //
 
 export default {
   find,
+  setBiometricKey,
+  clearBiometricKey,
+  getBiometricKey,
   isBiometricEnrolled,
   upsertOnLoginStmt,
 } as const;

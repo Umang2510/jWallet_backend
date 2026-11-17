@@ -16,6 +16,7 @@ export const DEFAULT_SCOPES = [
   'wallet:read',
   'txn:read',
   'txn:transfer',
+  'security:manage',
 ] as const;
 
 // ========================================================================= //

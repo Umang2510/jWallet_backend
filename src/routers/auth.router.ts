@@ -1,7 +1,8 @@
-import { type Request, type Response, Router } from 'express';
+import { Router } from 'express';
 
 import HttpStatusCodes from '#src/common/constants/HttpStatusCodes.ts';
 import Paths from '#src/common/constants/Paths/index.ts';
+import { requestContext } from '#src/common/utils/request.utils.ts';
 import { sendSuccess } from '#src/common/utils/response.utils.ts';
 import Auth, {
   type LoginInput,
@@ -14,19 +15,7 @@ import {
   refreshRateLimiter,
 } from '#src/middleware/rate-limiters.ts';
 import { validateBody } from '#src/middleware/validate.ts';
-import AuthService, { type RequestContext } from '#src/services/AuthService.ts';
-
-// ========================================================================= //
-//                                 FUNCTIONS                                 //
-// ========================================================================= //
-
-function requestContext(req: Request, res: Response): RequestContext {
-  return {
-    ip: req.ip ?? null,
-    userAgent: req.get('user-agent') ?? null,
-    requestId: (res.locals.requestId as string | undefined) ?? null,
-  };
-}
+import AuthService from '#src/services/AuthService.ts';
 
 // ========================================================================= //
 //                                   EXEC                                    //
