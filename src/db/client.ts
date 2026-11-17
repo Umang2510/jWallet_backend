@@ -1,4 +1,9 @@
-import { type Client, createClient, type Value } from '@libsql/client';
+import {
+  type Client,
+  createClient,
+  type Transaction,
+  type Value,
+} from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -44,5 +49,42 @@ export function asTextOrNull(v: Value | undefined): string | null {
 
 /** Shared libSQL client: a local SQLite file in dev/test, Turso when hosted. */
 const db = createDb();
+
+function isBusy(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  const msg = err instanceof Error ? err.message : '';
+  return code === 'SQLITE_BUSY' || /SQLITE_BUSY|database is locked/i.test(msg);
+}
+
+/**
+ * Run `fn` inside a write transaction. Commits if `fn` returns, rolls back if it
+ * throws. SQLite allows one writer at a time, so a transaction that can't get
+ * the write lock (SQLITE_BUSY) is retried with a short backoff.
+ */
+export async function withWriteTransaction<T>(
+  fn: (tx: Transaction) => Promise<T>,
+  maxAttempts = 8,
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    let tx: Transaction | undefined;
+    try {
+      tx = await db.transaction('write');
+      const result = await fn(tx);
+      await tx.commit();
+      return result;
+    } catch (err) {
+      if (tx && !tx.closed) await tx.rollback().catch(() => undefined);
+      if (isBusy(err) && attempt < maxAttempts) {
+        await new Promise((r) =>
+          setTimeout(r, 15 * attempt + Math.random() * 20),
+        );
+        continue;
+      }
+      throw err;
+    } finally {
+      tx?.close();
+    }
+  }
+}
 
 export default db;

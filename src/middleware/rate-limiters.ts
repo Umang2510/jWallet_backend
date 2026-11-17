@@ -26,6 +26,22 @@ export const loginRateLimiter = rateLimit({
   },
 });
 
+/** Per-IP limit on transfer calls (challenge + transfer). */
+export const transferRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Env.TRANSFER_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_req, _res, next) => {
+    next(
+      new TooManyRequestsError(
+        'Too many transfer requests. Please wait a minute.',
+        'RATE_LIMITED',
+      ),
+    );
+  },
+});
+
 /** Per-IP limit on token refreshes (stops refresh-token guessing/flooding). */
 export const refreshRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

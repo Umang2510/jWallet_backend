@@ -52,6 +52,8 @@ const Paths = {
   Transactions: {
     PATH: TXN_BASE,
     List: ep(TXN, '/', 'GET'),
+    TransferChallenge: ep(TXN, '/transfer/challenge', 'POST'),
+    Transfer: ep(TXN, '/transfer', 'POST'),
     Details: {
       ...ep(TXN, '/:id', 'GET'),
       format: (id: string) => `${TXN}/${encodeURIComponent(id)}`,

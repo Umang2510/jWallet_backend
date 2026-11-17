@@ -60,6 +60,12 @@ const EnvSchema = z.object({
   PIN_LOCK_HOURS: z.coerce.number().int().min(1).default(24),
   // Setting a first PIN is only allowed this soon after a password login.
   FRESH_AUTH_MINUTES: z.coerce.number().int().min(1).default(5),
+
+  // Money transfer
+  MAX_TRANSFER_AMOUNT: z.coerce.number().int().min(1).default(100_000), // ₹ per transfer
+  DAILY_TRANSFER_LIMIT: z.coerce.number().int().min(1).default(200_000), // ₹ per IST day
+  CHALLENGE_TTL_SEC: z.coerce.number().int().min(10).default(120),
+  TRANSFER_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(20), // per IP per minute
 });
 
 // ===================== Validate Environment Variables ==================== //
